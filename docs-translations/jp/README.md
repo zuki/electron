@@ -51,7 +51,7 @@ _リンクになっていないリストは未翻訳のものです。_
 
 * [app](api/app.md)
 * [autoUpdater](api/auto-updater.md)
-* BrowserWindow (api/browser-window.md)
+* [BrowserWindow] (api/browser-window.md)
     * [フレームの無いウィンドウ](api/frameless-window.md)
 * [contentTracing](api/content-tracing.md)
 * [dialog](api/dialog.md)
