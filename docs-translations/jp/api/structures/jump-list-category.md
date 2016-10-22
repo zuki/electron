@@ -13,8 +13,8 @@
   * `custom` - タスクまたはファイルのリンクを表示します。アプリケーションは `name` を
     設定しなければなりません。
 * `name` String - `type` が `custom` の場合、設定されなければなりません。それ以外の場合は、省略されるべきです。
-* `items` JumpListItem[] - Array of [`JumpListItem`](jump-list-item.md) オブジェクトの配列で、`type` が `tasks` または `custom` の場合、設定されなければなりません。それ以外の場合は、省略されるべきです。
+* `items` JumpListItem[] - [`JumpListItem`](jump-list-item.md) オブジェクトの配列で、`type` が `tasks` または `custom` の場合、設定されなければなりません。それ以外の場合は、省略されるべきです。
 
-**注:** If a `JumpListCategory` オブジェクトが `type` プロパティも `name` プロパティも
+**注:** `JumpListCategory` オブジェクトが `type` プロパティも `name` プロパティも
 設定されていない場合は、その `type` は `tasks` だと仮定されます。`name` プロパティが
 設定され、`type` プロパティが省略されている場合は、`type` は `custom` だと仮定されます。
