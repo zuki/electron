@@ -1,79 +1,86 @@
 # ipcMain
 
-`ipcMain`モジュールは[EventEmitter](https://nodejs.org/api/events.html)クラスのインスタンスです。メインプロセスで使うと、レンダラ―プロセス（ウェブページ）から非同期、同期敵にメッセージ送信できます。レンダラ―から送信されたメッセージはこのモジュールに出力されます。
+> メインプロセスからレンダラプロセスに非同期に通信します。
 
-## メッセージ送信
+`ipcMain`モジュールは[EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter)クラスのインスタンスです。メインプロセスで使うと、レンダラプロセス（ウェブページ）から送られた非同期・同期メッセージを処理できます。レンダラから送信されたメッセージはこのモジュールに出力されます。
 
-メインプロレスからレンダラ―プロセスへメッセージ送信を可能にします。さらなる情報は、[webContents.send](web-contents.md#webcontentssendchannel-arg1-arg2-) を参照してください。
+## メッセージの送信
+
+メインプロレスからレンダラプロセスへメッセージを送信することも可能です。さらなる情報は、[webContents.send][web-contents-send] を参照してください。
 
 * メッセージを送信するとき、イベント名は`channel`です。
-* 同期的にメッセージを返信するために、`event.returnValue`を設定する必要があります。
-* 送信者に非同期に戻して送信するために、 `event.sender.send(...)`を使えます。
+* 同期的にメッセージを返信するには、`event.returnValue`を設定する必要があります。
+* 送信者に非同期に返信するには、`event.sender.send(...)`が使えます。
 
-レンダラーとメインプロセス間でメッセージの送信とハンドリングをする例です:
+レンダラプロセスとメインプロセス間でメッセージの送信とハンドリングをする例です:
 
 ```javascript
-// In main process.
-const ipcMain = require('electron').ipcMain
-ipcMain.on('asynchronous-message', function (event, arg) {
-  console.log(arg)  // prints "ping"
+// メインプロセスにおいて
+const {ipcMain} = require('electron')
+ipcMain.on('asynchronous-message', (event, arg) => {
+  console.log(arg)  // "ping" を出力
   event.sender.send('asynchronous-reply', 'pong')
 })
 
-ipcMain.on('synchronous-message', function (event, arg) {
-  console.log(arg)  // prints "ping"
+ipcMain.on('synchronous-message', (event, arg) => {
+  console.log(arg)  //  "ping" を出力
   event.returnValue = 'pong'
 })
 ```
 
 ```javascript
-// In renderer process (web page).
-const ipcRenderer = require('electron').ipcRenderer
-console.log(ipcRenderer.sendSync('synchronous-message', 'ping')) // prints "pong"
+// レンダラプロセス（ウェブページ）において
+const {ipcRenderer} = require('electron')
+console.log(ipcRenderer.sendSync('synchronous-message', 'ping')) // "ping" を出力
 
-ipcRenderer.on('asynchronous-reply', function (event, arg) {
-  console.log(arg) // prints "pong"
+ipcRenderer.on('asynchronous-reply', (event, arg) => {
+  console.log(arg) // "pong" を出力
 })
 ipcRenderer.send('asynchronous-message', 'ping')
 ```
 
-## メッセージ受信
+## メッセージのリスニング
 
-`ipcMain`モジュールが持つイベント受信用のメソッドです。
+`ipcMain`モジュールはイベントをリッスンする以下のメソッドを持っています。
 
-### `ipcMain.on(channel, callback)`
+### `ipcMain.on(channel, listener)`
 
-* `channel` String - イベント名
-* `callback` Function
+* `channel` String
+* `listener` Function
 
-イベントが発生すると、`callback`が`event`と任意の引数でコールされます。
+`channel` をリッスンし、新たなイベントが到着すると、`listener` が `listener(event, args...)` の形でコールされます。
 
-### `ipcMain.removeListener(channel, callback)`
+### `ipcMain.once(channel, listener)`
 
-* `channel` String - イベント名
-* `callback` Function - 使用したのと同じ関数への参照です
-  `ipcMain.on(channel, callback)`
+* `channel` String
+* `listener` Function
 
-一度メッセージを受信すると、もうコールバックをアクティブにしたくなく、何らかの理由でメッセージ送信を単に止めるには、この関数が指定したチャンネルのコールバックハンドラーを削除します。
+イベントに `listener` 関数を一度だけ追加します。この `listener` は、次回メッセージが
+`channel` に送信された時にのみ実行され、その後削除されます。
 
-### `ipcMain.removeAllListeners(channel)`
+### `ipcMain.removeListener(channel, listener)`
 
-* `channel` String - The event name.
+* `channel` String
+* `listener` Function
 
-このipcチャンネルの *全ての* ハンドラーを削除します。
+指定した `channel` のリスナー配列から指定した `listener` を削除します。
 
-### `ipcMain.once(channel, callback)`
+### `ipcMain.removeAllListeners([channel])`
 
-ハンドラーの実行のために`ipcMain.on()`の代わりにこれを使うと、一度だけ発生することを意味し、`callback`の一回のコールの後にアクティブにしないのと同じです。
+* `channel` String (オプション)
 
-## IPC Event
+すべてのリスナー、または指定した `channel` のリスナーを削除します。
 
-`callback`に渡される`event`オブジェクトには次のメソッドがあります。
+## イベントオブジェクト
+
+`callback`に渡される`event`オブジェクトは、次のメソッドを持ちます。
 
 ### `event.returnValue`
 
-値にこれを設定すると同期メッセージを返します。
+同期メッセージで返す値をこれに設定します。
 
 ### `event.sender`
 
-送信したメッセージ`webContents`を返すと、非同期にメッセージを返信するために`event.sender.send`をコールできます。さらなる情報は、[webContents.send](web-contents.md#webcontentssendchannel-arg1-arg2-) を見てください。
+メッセージを送信した `webContents`を返します。非同期にメッセージに返信するために `event.sender.send` をコールできます。さらなる情報は、[webContents.send][web-contents-send]を参照してください。
+
+[web-contents-send]: web-contents.md#webcontentssendchannel-arg1-arg2-

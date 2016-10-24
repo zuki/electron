@@ -1,66 +1,78 @@
 # ipcRenderer
 
-`ipcRenderer`モジュールは[EventEmitter](https://nodejs.org/api/events.html) クラスのインスタンスです。レンダープロセス（ウェブページ）からメインプロセスに同期、非同期にメッセージを送信できるメソッドを提供します。メインプロセスから返答を受け取ることもできます。
+> レンダラプロセスからメインプロセスに非同期に通信します。
 
+`ipcRenderer` モジュールは、
+[EventEmitter](https://nodejs.org/api/events.html#events_class_eventemitter) クラスのインスタンスです。レンダラプロセス（ウェブページ）からメインプロセスにメッセージを同期的、非同期的に送信できるいくつかのメソッドを提供します。メインプロセスからの返信を受け取ることもできます。
 
-コード例は [ipcMain](ipc-main.md) をみてください。
+コード例は [ipcMain](ipc-main.md) を参照してください。
 
-## メッセージの受信
+## メッセージのリスニング
 
-`ipcRenderer`モジュールは、イベントを受信するための次のメソッドを持ちます：
+`ipcRenderer`モジュールは、イベントをリッスンする以下のメソッドを持っています。
 
-### `ipcRenderer.on(channel, callback)`
+### `ipcRenderer.on(channel, listener)`
 
-* `channel` String - イベント名
-* `callback` Function
+* `channel` String
+* `listener` Function
 
-イベントが発生したとき、任意の引数と `event`オブジェクトで`callback`をコールします。
+`channel` をリッスンし、新たなイベントが到着すると、`listener` が `listener(event, args...)` の形でコールされます。
 
-### `ipcRenderer.removeListener(channel, callback)`
+### `ipcRenderer.once(channel, listener)`
 
-* `channel` String - イベント名
-* `callback` Function - 使用したのと同じ関数への参照
-  `ipcRenderer.on(channel, callback)`
+* `channel` String
+* `listener` Function
 
-一度メッセージを受信すると、もうコールバックをアクティブにしたくなく、何らかの理由でメッセージ送信を単に止めるには、この関数が指定したチャンネルのコールバックハンドラーを削除します。
+イベントに `listener` 関数を一度だけ追加します。この `listener` は、次回メッセージが
+`channel` に送信された時にのみ実行され、その後削除されます。
 
-### `ipcRenderer.removeAllListeners(channel)`
+### `ipcRenderer.removeListener(channel, listener)`
 
-* `channel` String - The event name.
+* `channel` String
+* `listener` Function
 
-このipcチャンネルの *全ての* ハンドラーを削除します。
+指定した `channel` のリスナー配列から指定した `listener` を削除します。
 
-### `ipcMain.once(channel, callback)`
+### `ipcRenderer.removeAllListeners([channel])`
 
-ハンドラーの実行のために`ipcMain.on()`の代わりにこれを使うと、一度だけ発生することを意味し、`callback`の一回のコールの後にアクティブにしないのと同じです。
+* `channel` String (オプション)
 
-## メッセージ送信
+すべてのリスナー、または指定した `channel` のリスナーを削除します。
 
-`ipcRenderer`モジュールは、イベントを送信するための次のメソッドを持ちます：
+## メッセージの送信
+
+`ipcRenderer` モジュールは、イベントを送信する以下のメソッドを持っています。
 
 ### `ipcRenderer.send(channel[, arg1][, arg2][, ...])`
 
-* `channel` String - イベント名
-* `arg` (optional)
+* `channel` String
+* `arg` (オプション)
 
-`channel`
+`channel` 経由でメインプロセスに非同期にイベントを送信します。任意の引数を送信することも
+できます。引数は内部でJSON形式にシリアル化されますので、複数の関数やプロトタイプチェインは
+含まれません。
 
-`channel`経由でメインプロセスに非同期にイベントを送信し、任意の引数を送信できます。メインプロセスは`ipcMain`で`channel`を受信することでハンドルします。
+メインプロセスは、`ipcMain`モジュールで `channel` をリッスンすることによりこれを処理します。
 
 ### `ipcRenderer.sendSync(channel[, arg1][, arg2][, ...])`
 
-* `channel` String - イベント名
+* `channel` String
 * `arg` (optional)
 
-`channel`経由でメインプロセスに同期的にイベントを送信し、任意の引数を送信できます。
+`channel` 経由でメインプロセスに同期的にイベントを送信します。任意の引数を送信することも
+できます。引数は内部でJSON形式にシリアル化されますので、複数の関数やプロトタイプチェインは
+含まれません。
 
-メインプロセスは`ipcMain`で`channel`を受信することでハンドルし、 `event.returnValue`を設定してリプライします。
+メインプロセスは、`ipcMain`モジュールで `channel` をリッスンすることによりこれを処理し、
+`event.returnValue` を設定することで返信します。
 
-__Note:__ 同期的なメッセージ送信をすると全てのレンダラ―プロセスがブロックされるので、何をしているか理解できない限り、これを使うべきではありません。
+**注:**  同期メッセージの送信は、レンダラプロセス全体をブロックします。何をしているか理解
+していない限り、決してこれを使うべきではありません。
 
 ### `ipcRenderer.sendToHost(channel[, arg1][, arg2][, ...])`
 
-* `channel` String - イベント名.
+* `channel` String
 * `arg` (optional)
 
-`ipcRenderer.send`のようですが、メインプロセスの代わりにホストに`<webview>`エレメントにイベントを送信します。
+`ipcRenderer.send` と同じですが、イベントはメインプロセスではなく、ホストページの
+`<webview>`エレメントに送信されます。
