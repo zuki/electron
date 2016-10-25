@@ -1,51 +1,61 @@
 # session
 
-`session`モジュールは、新しい`Session`オブジェクトを作成するのに使われます。
+> セッション、クッキー、キャッシュ、プロキシー設定などを管理します。
 
-[`BrowserWindow`](browser-window.md)のプロパティである [`webContents`](web-contents.md)プロパティの`session`を使うことで既存ページの `session`にアクセスできます。
+`session`モジュールは、新しい`Session`オブジェクトの作成に使用できます。
+
+既存ページの `session` にも、[`WebContents`](web-contents.md)の `session` プロパティを使ったり、`session` モジュールからアクセスできます。
 
 ```javascript
-const BrowserWindow = require('electron').BrowserWindow
+const {BrowserWindow} = require('electron')
 
-var win = new BrowserWindow({ width: 800, height: 600 })
+let win = new BrowserWindow({width: 800, height: 600})
 win.loadURL('http://github.com')
 
-var ses = win.webContents.session
+const ses = win.webContents.session
+console.log(ses.getUserAgent())
 ```
 
 ## メソッド
 
- `session`メソッドは次のメソッドを持ちます：
+`session`メソッドは以下のメソッドを持ちます。
 
-### session.fromPartition(partition)
+### `session.fromPartition(partition[, options])`
 
 * `partition` String
+* `options` Object
+  * `cache` Boolean - キャッシュを有効にするか否か。
 
-`partition`文字列から新しい`Session`インスタンスを返します。
+`Session` - `partition`文字列から新しい`Session`インスタンスを返します。同じ`partition`
+を持つ既存の `Session` が存在する場合は、それが返されます。そうでない場合は、新たな
+`Session` インスタンスが `options` を使って作成されます。
 
-`partition`が`persist:`から始まっている場合、同じ`partition`のアプリ内のすべてのページに永続セッションを提供するのにページが使います。`persist:`プレフィックスが無い場合、ページはインメモリセッションを使います。`partition`が空の場合、アプリの既定のセッションを返します。
+`partition`が`persist:`から始まっている場合は、同じ`partition`を持つアプリ内のすべての
+ページで利用可能な永続セッションを使います。`persist:`で始まっていない無い場合は、ページはインメモリセッションを使います。`partition`が空の場合、アプリのデフォルトセッションが返されます。
 
 ## プロパティ
 
-`session`モジュールは次のプロパティを持ちます:
+`session`モジュールは以下のプロパティを持ちます。
 
 ### session.defaultSession
 
-アプリの既定のセッションオブジェクトを返します。
+`Session` オブジェクト - アプリのデフォルトセッションオブジェクト。
 
 ## クラス: Session
+
+> セッションのプロパティの取得と設定を行います。
 
 `session`モジュールで、`Session`オブジェクトを作成できます:
 
 ```javascript
-const session = require('electron').session
-
-var ses = session.fromPartition('persist:name')
+const {session} = require('electron')
+const ses = session.fromPartition('persist:name')
+console.log(ses.getUserAgent())
 ```
 
 ### インスタンスイベント
 
-`Session`のインスタンス上で次のイベントが提供されます:
+`Session`のインスタンスでは以下のイベントが利用できます。
 
 #### イベント: 'will-download'
 
@@ -53,122 +63,50 @@ var ses = session.fromPartition('persist:name')
 * `item` [DownloadItem](download-item.md)
 * `webContents` [WebContents](web-contents.md)
 
-Electronが`webContents`で`item`をダウンロードしようとすると出力されます。
+Electronが `webContents` の `item`をダウンロードしようとする時に、出力されます。
 
-`event.preventDefault()` をコールするとダウンロードをキャンセルできます。
+`event.preventDefault()` をコールするとダウンロードをキャンセルします。`item` は
+プロセスの次のループからは利用できなくなります。
+
 
 ```javascript
-session.defaultSession.on('will-download', function (event, item, webContents) {
+const {session} = require('electron')
+session.defaultSession.on('will-download', (event, item, webContents) => {
   event.preventDefault()
-  require('request')(item.getURL(), function (data) {
+  require('request')(item.getURL(), (data) => {
     require('fs').writeFileSync('/somewhere', data)
   })
 })
 ```
 
-### インスタンスのメソッド
+### インスタンスメソッド
 
-`Session`のインスタンス上で次のメソッドが提供されています:
-
-#### `ses.cookies`
-
-`cookies`は、cookiesに問い合わせしたり、修正をできるようにします。例：
-
-```javascript
-// Query all cookies.
-session.defaultSession.cookies.get({}, function (error, cookies) {
-  if (error) console.error(error)
-  console.log(cookies)
-})
-
-// Query all cookies associated with a specific url.
-session.defaultSession.cookies.get({ url: 'http://www.github.com' }, function (error, cookies) {
-  if (error) console.error(error)
-  console.log(cookies)
-})
-
-// Set a cookie with the given cookie data;
-// may overwrite equivalent cookies if they exist.
-var cookie = { url: 'http://www.github.com', name: 'dummy_name', value: 'dummy' }
-session.defaultSession.cookies.set(cookie, function (error) {
-  if (error) console.error(error)
-})
-```
-
-#### `ses.cookies.get(filter, callback)`
-
-* `filter` Object
-  * `url` String (オプション) - `url`に関連付けられているcookiesを取得します。空の場合すべてのurlのcookiesを取得します
-  * `name` String (オプション) - `name`でcookiesをフィルタリングします
-  * `domain` String (オプション) - `domains`のドメインまたはサブドメインに一致するcookiesを取得します
-  * `path` String (オプション) - `path`に一致するパスのcookiesを取得します
-  * `secure` Boolean (オプション) - Secure プロパティでcookiesをフィルターします
-  * `session` Boolean (オプション) - Filters out `session`または永続cookiesを除外します
-* `callback` Function
-
-`details`に一致するすべてのcookiesを取得するためにリクエストを送信し、完了時に`callback(error, cookies)`で`callback`がコールされます。
-
-`cookies` は`cookie`オブジェクトの配列です。
-
-* `cookie` Object
-  *  `name` String - cookieの名前
-  *  `value` String - cookieの値
-  *  `domain` String - cookieのドメイン
-  *  `hostOnly` String - cookieがホストのみのcookieかどうか
-  *  `path` String - cookieのパス
-  *  `secure` Boolean - cookieがセキュアとマークされているかどうか
-  *  `httpOnly` Boolean - HTTPのみとしてcookieがマークされているかどうか
-  *  `session` Boolean - cookieがセッションcookieまたは有効期限付きの永続cookieかどうか
-  *  `expirationDate` Double (オプション) -
-
-cookieの有効期限をUNIX時間で何秒かを示します。セッションcookiesは提供されません。
-
-#### `ses.cookies.set(details, callback)`
-
-* `details` Object
-  * `url` String - `url`に関連付けられているcookiesを取得します。
-  * `name` String - cookieの名前。省略した場合、既定では空です。
-  * `value` String - cookieの名前。省略した場合、既定では空です。
-  * `domain` String - cookieのドメイン。省略した場合、既定では空です。
-  * `path` String - cookieのパス。 省略した場合、既定では空です。
-  * `secure` Boolean - cookieをセキュアとしてマークする必要があるかどうか。既定ではfalseです。
-  * `session` Boolean - cookieをHTTPのみとしてマークする必要があるかどうか。既定ではfalseです。
-  * `expirationDate` Double -	cookieの有効期限をUNIX時間で何秒か。省略した場合、cookieはセッションcookieになります。
-* `callback` Function
-
-`details`でcookieを設定し、完了すると`callback(error)`で`callback`がコールされます。
-
-#### `ses.cookies.remove(url, name, callback)`
-
-* `url` String - cookieに関連付けられているURL
-* `name` String - 削除するcookieの名前
-* `callback` Function
-
-`url` と `name`と一致するcookiesを削除し、完了すると`callback`が、`callback()`でコールされます。
+`Session`のインスタンスでは以下のメソッドが利用できます。
 
 #### `ses.getCacheSize(callback)`
 
 * `callback` Function
-  * `size` Integer - 使用しているキャッシュサイズバイト数
+  * `size` Integer - 使用しているバイト単位のキャッシュサイズ。
 
-現在のセッションのキャッシュサイズを返します。
+セッションの現在のキャッシュサイズを返します。
 
 #### `ses.clearCache(callback)`
 
-* `callback` Function - 操作が完了したら、コールされます。
+* `callback` Function - 操作が完了したらコールされます。
 
 セッションのHTTPキャッシュをクリアします。
 
 #### `ses.clearStorageData([options, ]callback)`
 
 * `options` Object (オプション)
-  * `origin` String - `window.location.origin`の説明で、`scheme://host:port`に従う
-  * `storages` Array - クリアするストレージの種類で、次を含められます:
+  * `origin` String - `window.location.origin` の表現 `scheme://host:port` に
+    従うべきです。
+  * `storages` String[] - クリアするストレージの種類で、次を含めることができます:
     `appcache`、 `cookies`、 `filesystem`、 `indexdb`、 `local storage`、
     `shadercache`、 `websql`、 `serviceworkers`
-  * `quotas` Array - クリアするクォーターの種類で、次を含められます:
+  * `quotas` String[] - クリアする割当の種類で、次を含めることができます:
     `temporary`, `persistent`, `syncable`.
-* `callback` Function - 操作をするとコールされます。
+* `callback` Function (オプション) - 操作が完了したらコールされます。
 
 ウェブストレージのデータをクリアします。
 
@@ -181,13 +119,14 @@ cookieの有効期限をUNIX時間で何秒かを示します。セッションc
 * `config` Object
   * `pacScript` String - PACファイルに関連付けらえたURL
   * `proxyRules` String - 使用するプロキシを指定するルール
-* `callback` Function - 操作をするとコールされます。
+  * `proxyBypassRules` String - プロキシ設定を無視すべきURLを指定するルール
+* `callback` Function - 操作が完了したらコールされます。
 
 プロキシ設定を設定します。
 
-`pacScript` と `proxyRules`が一緒に渡されたら、`proxyRules`オプションは無視され、`pacScript`設定が適用されます。
+`pacScript` と `proxyRules` が共に指定されたら、`proxyRules`オプションは無視され、`pacScript`設定が適用されます。
 
- `proxyRules`はつふぃのルールに従います。
+`proxyRules`は次のルールに従わなければなりません。
 
 ```
 proxyRules = schemeProxies[";"<schemeProxies>]
@@ -199,90 +138,366 @@ proxyURL = [<proxyScheme>"://"]<proxyHost>[":"<proxyPort>]
 
 具体例:
 
-* `http=foopy:80;ftp=foopy2` - `http://`URLは`foopy:80`HTTPプロキシを使用し、`ftp://`URLは`foopy2:80` HTTPプロキシを使用します。
-* `foopy:80` - 全てのURLで`foopy:80`を使用します。
-* `foopy:80,bar,direct://` - 全てのURLで`foopy:80`HTTPプロキシを使用し、`foopy:80`が提供されていなければ`bar`を使用し、さらに使えない場合はプロキシを使いません。
-* `socks4://foopy` - 全てのURLでSOCKS  `foopy:1080`プロキシを使います。
-* `http=foopy,socks5://bar.com` - http URLで`foopy`HTTPプロキシを使い、`foopy`が提供されていなければ、SOCKS5 proxy `bar.com`を使います。
-* `http=foopy,direct://` - 　http URLで`foopy`HTTPプロキシを使い、`foopy`が提供されていなければ、プロキシを使いません。
-* `http=foopy;socks=foopy2` -  http URLで`foopy`HTTPプロキシを使い、それ以外のすべてのURLで`socks4://foopy2`を使います。
+* `http=foopy:80;ftp=foopy2` - `http://`URLにはHTTPプロキシ `foopy:80` を、
+  `ftp://`URLにはHTTPプロキシ `foopy2:80` を使用します。
+* `foopy:80` - 全てのURLで `foopy:80` を使用します。
+* `foopy:80,bar,direct://` - 全てのURLでHTTPプロキシ `foopy:80` を使用し、
+  `foopy:80` が利用できない場合は `bar` でフェイルオーバーし、それでも駄目なら
+  プロキシを使いません。
+* `socks4://foopy` - 全てのURLでSOCKS v4プロキシ `foopy:1080` を使用します。
+* `http=foopy,socks5://bar.com` - http URLにはHTTPプロキシ `foopy` を使い、
+  `foopy`が利用できない場合は、SOCKS5 proxy `bar.com` にフェイルオーバーします。
+* `http=foopy,direct://` - 　http URLではHTTPプロキシ `foopy`を使用し、
+  `foopy`が利用できない場合は、プロキシを使いません。
+* `http=foopy;socks=foopy2` -  http URLではHTTPプロキシ `foopy` を使用し、
+  それ以外のすべてのURLでは `socks4://foopy2` を使用します。
+
+`proxyBypassRules` は以下で説明する規則のコンマ区切りのリストです。
+
+* `[ URL_SCHEME "://" ] HOSTNAME_PATTERN [ ":" <port> ]`
+
+   パターン HOSTNAME_PATTERN にマッチするすべてのホスト名にマッチします。
+
+   例:
+     "foobar.com", "*foobar.com", "*.foobar.com", "*foobar.com:99",
+     "https://x.*.y.com:99"
+
+ * `"." HOSTNAME_SUFFIX_PATTERN [ ":" PORT ]`
+
+   特定のドメイン接尾字にマッチします。
+
+   例:
+     ".google.com", ".com", "http://.google.com"
+
+* `[ SCHEME "://" ] IP_LITERAL [ ":" PORT ]`
+
+   IPアドレスリテラルのURLにマッチします。
+
+   例:
+     "127.0.1", "[0:0::1]", "[::1]", "http://[::1]:99"
+
+*  `IP_LITERAL "/" PREFIX_LENGHT_IN_BITS`
+
+   指定した範囲に含まれるIPリテラルの任意のURLにマッチします。IP範囲はCIDR記法を
+   使って指定します。
+
+   例:
+     "192.168.1.1/16", "fefe:13::abc/33".
+
+*  `<local>`
+
+   ローカルアドレスにマッチします。`<local>` の意味は、ホストが "127.0.0.1", "::1",
+   "localhost" のいずれかとマッチするか否かです。
 
 ### `ses.resolveProxy(url, callback)`
 
 * `url` URL
 * `callback` Function
 
-`url`をプロキシ情報で解決します。リクエストが実行された時、`callback(proxy)`で `callback`がコールされます。
+`url` のプロキシ情報を解決します。リクエストが実行された時、`callback` は、
+`callback(proxy)` の形式でコールされます。
 
 #### `ses.setDownloadPath(path)`
 
 * `path` String - ダウンロード場所
 
-ダウンロードの保存ディレクトリを設定します。既定では、ダウンロードディレクトリは、個別のアプリフォルダー下の`Downloads`です。
+ダウンロードの保存ディレクトリを設定します。規定値のダウンロードディレクトリは、各自の
+アプリフォルダー配下の `Downloads` ディレクトリです。
 
 #### `ses.enableNetworkEmulation(options)`
 
 * `options` Object
-  * `offline` Boolean - ネットワーク停止を再現するかどうか
-  * `latency` Double - RTT  ms秒
-  * `downloadThroughput` Double - Bpsでのダウンロード割合
-  * `uploadThroughput` Double - Bpsでのアップロード割合
+  * `offline` Boolean (オプション) - ネットワークの停止をエミュレートするか否か。既定値は `false`。
+  * `latency` Double (オプション) - ミリ秒単位のRTT。既定値は `0` で、レイテンシ制限を無効にする。
+  * `downloadThroughput` Double (オプション) - Bps単位のダウンロード速度。既定値は `0`
+   で、ダウンロード制限を無効にする。
+  * `uploadThroughput` Double (オプション) - Bps単位のアップロード速度。既定値は `0`
+   で、アップロード制限を無効にする。
 
-再現ネットワークは、`session`用の設定を付与します。
+指定した設定で `session` 用のネットワークをエミュレートします。
 
 ```javascript
-// To emulate a GPRS connection with 50kbps throughput and 500 ms latency.
+// GPRSコネクションをスループット 50kbps、レイテンシ 500ms でエミュレートする
 window.webContents.session.enableNetworkEmulation({
   latency: 500,
   downloadThroughput: 6400,
   uploadThroughput: 6400
 })
 
-// To emulate a network outage.
+// ネットワーク停止をエミュレートする
 window.webContents.session.enableNetworkEmulation({offline: true})
 ```
 
 #### `ses.disableNetworkEmulation()`
 
-`session`ですでに有効になっているネットワークエミュレーションを無効化します。オリジナルのネットワーク設定にリセットします。
+`session`ですでに有効になっているネットワークエミュレーションを無効化します。オリジナルの
+ネットワーク設定にリセットします。
 
 #### `ses.setCertificateVerifyProc(proc)`
 
 * `proc` Function
 
-`session`の証明書検証ロジックを設定し、サーバー証明書確認がリクエストされた時、`proc(hostname, certificate, callback)`で`proc`がコールされます。`callback(true)`がコールされると証明書を受け入れ、`callback(false)`がコールされると拒否します。
+`session`の証明書検証ロジックを設定します。サーバー証明書確認がリクエストされる度に、
+`proc` が `proc(hostname, certificate, callback)` の形でコールされます。
+`callback(true)`をコールすると証明書を受け入れ、`callback(false)`をコールすると
+拒否します。
 
-Calling `setCertificateVerifyProc(null)`をコールして、既定の証明書検証ロジックに戻します。
+`setCertificateVerifyProc(null)`をコールすると既定の証明書検証ロジックに戻ります。
 
 ```javascript
-myWindow.webContents.session.setCertificateVerifyProc(function (hostname, cert, callback) {
+const {BrowserWindow} = require('electron')
+let win = new BrowserWindow()
+
+win.webContents.session.setCertificateVerifyProc((hostname, cert, callback) => {
   callback(hostname === 'github.com')
 })
 ```
+#### `ses.setPermissionRequestHandler(handler)`
+
+* `handler` Function
+  * `webContents` Object - アクセス権を要求する[WebContents](web-contents.md)。
+  * `permission` String - 'media', 'geolocation', 'notifications', 'midiSysex',
+    'pointerLock', 'fullscreen', 'openExternal' のいずれか。
+  * `callback` Function - アクセス権を許可または拒否。
+
+`session`に対するアクセス権要求への応答に使用するハンドラを設定します。`callback(true)`を
+コールするとアクセスを許可し、`callback(false)`をコールすると拒否します。
+
+```javascript
+const {session} = require('electron')
+session.fromPartition('some-partition').setPermissionRequestHandler((webContents, permission, callback) => {
+  if (webContents.getURL() === 'some-host' && permission === 'notifications') {
+    return callback(false) // denied.
+  }
+
+  callback(true)
+})
+```
+
+#### `ses.clearHostResolverCache([callback])`
+
+* `callback` Function (オプション) - 操作が完了した時に呼び出されます。
+
+ホストリゾルバキャッシュをクリアします。
+
+#### `ses.allowNTLMCredentialsForDomains(domains)`
+
+* `domains` String - 統合認証が有効になっているサーバのカンマ区切りのリスト。
+
+HTTP NTLM認証またはNegotiate認証に証明書を常に送信するか否かを動的に設定します。
+
+```javascript
+const {session} = require('electron')
+// `example.com`, `foobar.com`, `baz`で終わる
+// すべてのURLを統合認証とみなす
+session.defaultSession.allowNTLMCredentialsForDomains('*example.com, *foobar.com, *baz')
+
+// すべてのURLを統合認証とみなす
+session.defaultSession.allowNTLMCredentialsForDomains('*')
+```
+
+#### `ses.setUserAgent(userAgent[, acceptLanguages])`
+
+* `userAgent` String
+* `acceptLanguages` String (オプション)
+
+このセッションの `userAgent` と `acceptLanguages` を上書きします。
+
+`acceptLanguages` は言語コードのカンマ区切りの順序付きリストでなければなりません。
+たとえば、`"en-US,fr,de,ko,zh-CN,ja"`。
+
+このメソッドは既存の `WebContents` には影響を与えません。また、各 `WebContents` で
+`webContents.setUserAgent` を使って、セッション全体のユーザエージェントを上書きする
+ことができます。
+
+#### `ses.getUserAgent()`
+
+`String` - このセッションのユーザエージェントを返します。
+
+#### `ses.getBlobData(identifier, callback)`
+
+* `identifier` String - 有効なUUID.
+* `callback` Function
+  * `result` Buffer - Blobデータ。
+
+`Blob` - `identifier`に紐付くblobデータ。
+
+### インスタンスプロパティ
+
+`Session` のインスタンスでは以下のプロパティが利用できます。
+
+#### `ses.cookies`
+
+このセッションのCookiesオブジェクト。
 
 #### `ses.webRequest`
 
-`webRequest`APIセットをインターセプトし、そのライフタイムの様々な段階でリクエストの内容を変更できます。
+このセッションのWebRequestオブジェクト。
 
-APIのイベントが発生したとき、それぞれのAPIはオプションで`filter`と `listener`を受け入れ、`listener(details)` で`listener`がコールされ、`details`はリクエストを説明するオブジェクトです。`listener`に`null`が渡されるとイベントの購読をやめます。
+#### `ses.protocol`
 
-`filter`は`urls`プロパティを持つオブジェクトで、URLパターンにマッチしないリクエストを除外するのに使われるURLパターンの配列です。`filter`を省略した場合、全てのリクエストにマッチします。
-
-いくつかのイベントで`callback`で`listener`に渡され、`listener`が動作するとき、`response`オブジェクトでコールされる必要があります。
+このセッションのProtocolオブジェクト（[protocol](protocol.md)モジュールのインスタンス）。
 
 ```javascript
-// Modify the user agent for all requests to the following urls.
-var filter = {
+const {app, session} = require('electron')
+const path = require('path')
+
+app.on('ready', function () {
+  const protocol = session.fromPartition('some-partition').protocol
+  protocol.registerFileProtocol('atom', function (request, callback) {
+    var url = request.url.substr(7)
+    callback({path: path.normalize(`${__dirname}/${url}`)})
+  }, function (error) {
+    if (error) console.error('Failed to register protocol')
+  })
+})
+```
+
+## クラス: Cookies
+
+> セッションクッキーを検索し、変更します。
+
+`Cookies` クラスのインスタンスは `Session` の `cookies` プロパティを使ってアクセス
+されます。
+
+たとえば:
+
+```javascript
+const {session} = require('electron')
+
+// すべてのクッキーを検索
+session.defaultSession.cookies.get({}, (error, cookies) => {
+  console.log(error, cookies)
+})
+
+// 指定のURLに紐付いたすべてのクッキーを検索
+session.defaultSession.cookies.get({url: 'http://www.github.com'}, (error, cookies) => {
+  console.log(error, cookies)
+})
+
+// 指定のクッキーデータを持つクッキーを設定する
+// 同等なクッキーがすでに存在する場合は上書きする
+const cookie = {url: 'http://www.github.com', name: 'dummy_name', value: 'dummy'}
+session.defaultSession.cookies.set(cookie, (error) => {
+  if (error) console.error(error)
+})
+```
+
+### インスタンスイベント
+
+`Cookies` のインスタンスでは以下のイベントが利用できます。
+
+#### イベント: 'changed'
+
+* `event` Event
+* `cookie` Object - 変更されたクッキー。
+* `cause` String - 以下の値のいずれかによる変更の理由。
+  * `explicit` - クッキーは消費者のアクションにより直接変更された。
+  * `overwrite` - クッキーは自身を上書きする挿入操作により自動的に削除された。
+  * `expired` - クッキーは失効により自動的に削除された。
+  * `evicted` - クッキーはガベージコレクションにより自動的に撤去された。
+  * `expired-overwrite` - クッキーはすでに失効している有効期限日で上書きされた。
+* `removed` Boolean - クッキーが削除された場合は `true`、そうでない場合は `false`。
+
+クッキーが追加、編集、削除、失効により変更された時に出力されます。
+
+### インスタンスメソッドI
+
+`Cookies` のインスタンスでは以下のメソッドが利用できます。
+
+#### `cookies.get(filter, callback)`
+
+* `filter` Object
+  * `url` String (オプション) - `url`に日も注いたクッキーを抽出します。空値はすべてのURLのクッキーを抽出することを意味します。
+  * `name` String (オプション) - クッキーを名前でフィルタリングします。
+  * `domain` String (オプション) - ドメインが `domains` にマッチ、または `domains` の
+    サブドメインであるキッキーを抽出します。
+  * `path` String (オプション) - パスが `path` にマッチするキッキーを抽出します。
+  * `secure` Boolean (オプション) - クッキーをSecureプロパティでフィルタリングします。
+  * `session` Boolean (オプション) - セッションクッキーまたは永続クッキーを除去します。
+* `callback` Function
+
+`filter` にマッチするすべてのクッキーを得るリクエストを送信します。`callback`は
+完了時に `callback(error, cookies)` の形でコールされます。
+
+`cookies` は `cookie` オブジェクトの配列です。
+
+* `cookie` Object
+  *  `name` String - クッキーの名前。
+  *  `value` String - クッキーの値。
+  *  `domain` String - クッキーのドメイン。
+  *  `hostOnly` String - クッキーはホストのみクッキーであるか否か。
+  *  `path` String - クッキーのパス。
+  *  `secure` Boolean - クッキーはセキュアのマーク付けがされているか否か。
+  *  `httpOnly` Boolean - クッキーはHTTPのみのマーク付けがされているか否か。
+  *  `session` Boolean - クッキーはセッションクッキーか、有効期限日付きの永続クッキーか。
+  *  `expirationDate` Double (オプション) - UNIXエポックからの秒数によるクッキーの
+    有効期限日。セッションクッキーでは提供されない。
+
+#### `cookies.set(details, callback)`
+
+* `details` Object
+  * `url` String - クッキーに紐付けるURL。
+  * `name` String - クッキーの名前。省略された場合は既定値で空。
+  * `value` String - クッキーの値。省略された場合は既定値で空。
+  * `domain` String - クッキーのドメイン。省略された場合は既定値で空。
+  * `path` String - クッキーのパス。省略された場合は既定値で空。
+  * `secure` Boolean - クッキーはセキュアのマーク付けがされるべきか否か。既定値は `false`。
+  * `httpOnly` Boolean - クッキーはホストのみのマーク付けがされるべきか否か。既定値は `false`。
+  * `expirationDate` Double -	UNIXエポックからの秒数によるクッキーの有効期限日。
+    省略された場合は、クッキーはセッションクッキーとなり、セッション間で保持されなくなります。
+* `callback` Function
+
+`details` でクッキーを設定します。`callback`は完了後に `callback(error)` の形で
+コールされます。
+
+#### `cookies.remove(url, name, callback)`
+
+* `url` String - クッキーに紐付いたURL。
+* `name` String - 削除するクッキーの名前。
+* `callback` Function
+
+`url` と `name` にマッチするクッキーを削除します。, `callback`は完了後に
+`callback()` の形でコールされます。
+
+## クラス: WebRequest
+
+> そのライフタイムのさまざまな段階でリクエストの内容をインターセプトし変更します。
+
+`webRequest` クラスのインスタンスは `Session` の `webRequest` プロパティを使って
+アクセスされます。
+
+`webRequest` のメソッドは、オプションの `filter` と `listener` を受け取ります。
+`listener` は、APIのイベントが発生した時に、`listener(details)` の形でコールされます。
+`details` オブジェクトはリクエストを説明します。`listener` として `null` を渡すとイベントの購読を中止します。
+
+`filter` オブジェクトは、URLパターンにマッチしないリクエストの除外に使用されるURLパターンの
+配列である `urls` プロパティを持ちます。`filter`を省略した場合、全てのリクエストにマッチします。
+
+いくつかのイベントでは、`listener` に `callback` が渡されます。これは `listener` の
+作業が動作した時に、`response`オブジェクトを引数にコールされる必要があります。
+
+リクエストに `User-Agent` ヘッダーを追加する例を示します。
+
+```javascript
+const {session} = require('electron')
+
+// 以下のURLに対するすべてのリクエストのユーザエージェントを変更する
+const filter = {
   urls: ['https://*.github.com/*', '*://electron.github.io']
 }
 
-session.defaultSession.webRequest.onBeforeSendHeaders(filter, function (details, callback) {
+session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
   details.requestHeaders['User-Agent'] = 'MyAgent'
   callback({cancel: false, requestHeaders: details.requestHeaders})
 })
 ```
 
-#### `ses.webRequest.onBeforeRequest([filter, ]listener)`
+### インスタンスメソッド
+
+`WebRequest` のインスタンスでは以下のメソッドが利用できます。
+
+#### `webRequest.onBeforeRequest([filter, ]listener)`
 
 * `filter` Object
 * `listener` Function
@@ -296,26 +511,30 @@ session.defaultSession.webRequest.onBeforeSendHeaders(filter, function (details,
   * `resourceType` String
   * `timestamp` Double
   * `uploadData` Array (オプション)
-  * `callback` Function
+* `callback` Function
 
 `uploadData`は `data`オブジェクトの配列です。
 
 * `data` Object
   * `bytes` Buffer - 送信されるコンテンツ
   * `file` String - アップロードされるファイルパス
+  * `blobUUID` String - blobデータのUUID。データの抽出には [ses.getBlobData](session.md#sesgetblobdataidentifier-callback) メソッドを使ってください。
 
-`callback`は`response`オブジェクトでコールされる必要があります:
+`callback` は `response`オブジェクトを引数にコールされなければなりません。。
 
 * `response` Object
   * `cancel` Boolean (オプション)
-  * `redirectURL` String (オプション) - オリジナルリクエストが送信もしくは完了するのを中断し、代わりに付与したURLにリダイレクトします。
+  * `redirectURL` String (オプション) - オリジナルリクエストが送信もしくは完了するのを
+    中断し、代わりに指定したURLにリダイレクトします。
 
-#### `ses.webRequest.onBeforeSendHeaders([filter, ]listener)`
+#### `webRequest.onBeforeSendHeaders([filter, ]listener)`
 
 * `filter` Object
 * `listener` Function
 
-リクエストヘッダーが提供されれば、HTTPリクエストが送信される前に、`listener(details, callback)`で`listener`がコールされます。TCP接続がサーバーに対して行われた後に発生することがありますが、HTTPデータは送信前です。
+リクエストヘッダーが提供されると、HTTPリクエストが送信される前に、listener` が
+ `listener(details, callback)` の形でコールされます。これは、サーバにTCP接続が
+ 行われた後で、HTTPデータが送信される前に行われます。
 
 * `details` Object
   * `id` Integer
@@ -326,18 +545,20 @@ session.defaultSession.webRequest.onBeforeSendHeaders(filter, function (details,
   * `requestHeaders` Object
 * `callback` Function
 
-The `callback` has to be called with an `response` object:
+`callback` は `response`オブジェクトを引数にコールされなければなりません。
 
 * `response` Object
   * `cancel` Boolean (オプション)
   * `requestHeaders` Object (オプション) - 付与されると、リクエストはそれらのヘッダーで作成されます。
 
-#### `ses.webRequest.onSendHeaders([filter, ]listener)`
+#### `webRequest.onSendHeaders([filter, ]listener)`
 
 * `filter` Object
 * `listener` Function
 
-サーバーにリクエストを送信しようする直前に`listener(details)`で、`listener` がコールされます。前回の`onBeforeSendHeaders`レスポンスの変更箇所は、このリスナーが起動した時点で表示されます。
+リクエストがサーバーに送信されようとする直前に `listener` が `listener(details)` の形で
+コールされます。先に実行された `onBeforeSendHeaders` レスポンスの変更は、このリスナーが
+起動した時点で有効になっています。
 
 * `details` Object
   * `id` Integer
@@ -347,12 +568,12 @@ The `callback` has to be called with an `response` object:
   * `timestamp` Double
   * `requestHeaders` Object
 
-#### `ses.webRequest.onHeadersReceived([filter,] listener)`
+#### `webRequest.onHeadersReceived([filter,] listener)`
 
 * `filter` Object
 * `listener` Function
 
-リクエストのHTTPレスポンスヘッダーを受信したとき、`listener`は`listener(details, callback)`でコールされます。
+リクエストのHTTPレスポンスヘッダーを受信したとき、`listener` が `listener(details, callback)` の形でコールされます。
 
 * `details` Object
   * `id` String
@@ -365,18 +586,23 @@ The `callback` has to be called with an `response` object:
   * `responseHeaders` Object
 * `callback` Function
 
-`callback`は`response`オブジェクトでコールされる必要があります:
+`callback` は `response`オブジェクトを引数にコールされなければなりません。
 
 * `response` Object
   * `cancel` Boolean
-  * `responseHeaders` Object (オプション) - 付与されていると、これらのヘッダーでサーバーはレスポンスしたと仮定します。
+  * `responseHeaders` Object (オプション) - 指定されると、サーバはこれらのヘッダーで
+    レスポンスしたと仮定されます。
+  * `statusLine` String (オプション) - ヘッダーの状態を変更するために `responseHeaders` を上書きした時は、指定されるべきです。そうでない場合は、
+  オリジナルのレスポンスヘッダーの状態が使用されます。
 
-#### `ses.webRequest.onResponseStarted([filter, ]listener)`
+#### `webRequest.onResponseStarted([filter, ]listener)`
 
 * `filter` Object
 * `listener` Function
 
-レスポンスボディの最初のバイトを受信したとき、`listener` は`listener(details)` でコールされます。HTTPリクエストでは、ステータス行とレスポンスヘッダーを意味します。
+レスポンスボディの最初のバイトを受信したとき、`listener` が `listener(details)` の形で
+コールされます。HTTPリクエストでは、これは、ステータス行とレスポンスヘッダーが利用可能で
+あることを意味します。
 
 * `details` Object
   * `id` Integer
@@ -385,16 +611,17 @@ The `callback` has to be called with an `response` object:
   * `resourceType` String
   * `timestamp` Double
   * `responseHeaders` Object
-  * `fromCache` Boolean  -ディスクキャッシュから取得したレスポンスかどうかを示します
+  * `fromCache` Boolean  - レスポンスがディスクキャッシュから取得されたか否かを示します
   * `statusCode` Integer
   * `statusLine` String
 
-#### `ses.webRequest.onBeforeRedirect([filter, ]listener)`
+#### `webRequest.onBeforeRedirect([filter, ]listener)`
 
 * `filter` Object
 * `listener` Function
 
-サーバーがリダイレクトを開始しはじめたとき、`listener(details)`で`listener` がコールされます。
+サーバーがリダイレクトを開始しはじめたとき、`listener` が `listener(details)` の形で
+コールされます。
 
 * `details` Object
   * `id` String
@@ -404,7 +631,7 @@ The `callback` has to be called with an `response` object:
   * `timestamp` Double
   * `redirectURL` String
   * `statusCode` Integer
-  * `ip` String (オプション) - 実際にリクエストが送信されるサーバーIPアドレス
+  * `ip` String (オプション) - 実際にリクエストが送信されたサーバーのIPアドレス
   * `fromCache` Boolean
   * `responseHeaders` Object
 
@@ -413,7 +640,7 @@ The `callback` has to be called with an `response` object:
 * `filter` Object
 * `listener` Function
 
-リクエスト完了時、`listener`が`listener(details)`でコールされます。
+リクエストが完了した時、`listener` が `listener(details)` の形でコールされます。
 
 * `details` Object
   * `id` Integer
@@ -426,12 +653,12 @@ The `callback` has to be called with an `response` object:
   * `statusCode` Integer
   * `statusLine` String
 
-#### `ses.webRequest.onErrorOccurred([filter, ]listener)`
+#### `webRequest.onErrorOccurred([filter, ]listener)`
 
 * `filter` Object
 * `listener` Function
 
-エラー発生時、 `listener(details)` で`listener`がコールされます。
+エラーが発生した時、`listener` が `listener(details)` の形でコールされます。
 
 * `details` Object
   * `id` Integer
